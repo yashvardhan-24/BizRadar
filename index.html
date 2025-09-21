@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BizRadar – AI Business Opportunities</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+  <style>
+    /* Reset & base */
+    * { margin:0; padding:0; box-sizing:border-box; font-family:"Segoe UI", sans-serif;}
+    body { background:#0d0d0d; color:#fff; scroll-behavior: smooth;}
+    h1,h2 { color:#00f7ff; text-shadow:0 0 10px #00f7ff;}
+    p { color:#aaa; margin-bottom:15px; }
+    /* Navbar */
+    nav { position:fixed; top:0; left:0; right:0; background:#111; display:flex; justify-content:space-between; padding:15px 30px; z-index:1000; box-shadow:0 0 10px #00f7ff; }
+    nav .logo { font-size:1.5rem; font-weight:bold; color:#00f7ff; }
+    nav ul { list-style:none; display:flex; gap:20px; }
+    nav ul li a { text-decoration:none; color:#fff; transition:0.3s; }
+    nav ul li a:hover, nav ul li a.active { color:#00ff99; }
+    /* Sections */
+    section { min-height:100vh; padding:120px 50px 50px 50px; display:flex; flex-direction:column; align-items:center; justify-content:flex-start; text-align:center;}
+    /* Home */
+    .search-box { display:flex; gap:10px; flex-wrap:wrap; justify-content:center; margin-top:20px; }
+    .search-input { padding:12px 18px; font-size:1rem; border-radius:8px; border:none; outline:none; width:250px; background:#1a1a1a; color:#fff; box-shadow:0 0 8px #00f7ff; }
+    .cta-btn { padding:12px 20px; border:none; border-radius:8px; cursor:pointer; background:linear-gradient(90deg,#00f7ff,#00ff99); color:#000; font-weight:bold; transition:0.3s;}
+    .cta-btn:hover { transform:scale(1.05); box-shadow:0 0 15px #00ff99; }
+    /* Map */
+    #map { width:100%; max-width:1000px; height:70vh; border-radius:12px; box-shadow:0 0 20px #00f7ff; margin-top:20px; position:relative;}
+    /* Radar/heat animation overlay */
+    .radar-circle {
+      position:absolute;
+      border:2px solid #00ff99;
+      border-radius:50%;
+      animation: pulse 2s infinite;
+      pointer-events:none;
+      opacity:0.6;
+    }
+    @keyframes pulse {
+      0% { transform: scale(0.2); opacity:0.6;}
+      50% { transform: scale(1.2); opacity:0.2;}
+      100% { transform: scale(0.2); opacity:0.6;}
+    }
+    /* Reports */
+    .report-box { background:#111; padding:20px; margin:10px; border-radius:10px; box-shadow:0 0 10px #00ff99; width:300px;}
+    /* Opportunities Dashboard Cards */
+    .dashboard { display:flex; flex-wrap:wrap; justify-content:center; margin-top:20px; gap:15px; }
+    .dash-card { background:#111; padding:15px; border-radius:10px; width:220px; box-shadow:0 0 10px #00ff99; text-align:left; }
+    .dash-card h3 { color:#00ff99; font-size:1.2rem; margin-bottom:5px;}
+    .dash-card p { color:#aaa; font-size:0.9rem; margin:2px 0;}
+    /* Contact Form */
+    form { display:flex; flex-direction:column; gap:10px; max-width:400px; width:100%; margin-top:20px;}
+    input, textarea { padding:10px; border-radius:8px; border:none; background:#1a1a1a; color:#fff; box-shadow:0 0 8px #00f7ff;}
+    button { padding:12px; border:none; border-radius:8px; cursor:pointer; background:linear-gradient(90deg,#00f7ff,#00ff99); color:#000; font-weight:bold; transition:0.3s;}
+    button:hover { transform:scale(1.05); box-shadow:0 0 15px #00ff99;}
+    /* Responsive */
+    @media(max-width:768px){ .search-input{width:200px;} section{padding:120px 20px 50px 20px;} nav{flex-direction:column; gap:10px; align-items:center;} nav ul{flex-wrap:wrap; justify-content:center;} .dash-card{width:90%;} }
+  </style>
+</head>
+<body>
+
+  <!-- Navbar -->
+  <nav>
+    <div class="logo">BizRadar</div>
+    <ul>
+      <li><a href="#home" class="active">Home</a></li>
+      <li><a href="#opportunities">Opportunities</a></li>
+      <li><a href="#reports">Reports</a></li>
+      <li><a href="#about">About</a></li>
+      <li><a href="#contact">Contact</a></li>
+    </ul>
+  </nav>
+
+  <!-- Home -->
+  <section id="home">
+    <h1>BizRadar</h1>
+    <p>Discover high-demand, low-competition business opportunities near you.</p>
+    <div class="search-box">
+      <input type="text" id="locationInput" class="search-input" placeholder="Enter a city...">
+      <button class="cta-btn" onclick="searchLocation()">Find Opportunities</button>
+    </div>
+  </section>
+
+  <!-- Opportunities -->
+  <section id="opportunities">
+    <h1>Opportunities Map</h1>
+    <p>Explore AI-suggested business ideas by city and sector.</p>
+    <select id="sectorFilter" style="padding:10px; border-radius:8px; border:none; background:#1a1a1a; color:#fff; box-shadow:0 0 8px #00f7ff;">
+      <option value="All">All Sectors</option>
+      <option value="Retail">Retail</option>
+      <option value="Food">Food</option>
+      <option value="Tech">Tech</option>
+    </select>
+    <div id="map"></div>
+
+    <div class="dashboard" id="dashboard"></div>
+  </section>
+
+  <!-- Reports -->
+  <section id="reports">
+    <h1>Sample Reports</h1>
+    <div style="display:flex; flex-wrap:wrap; justify-content:center;">
+      <div class="report-box">
+        <h2>Retail Report</h2>
+        <p>City: New Delhi</p>
+        <p>Predicted Growth: 8%</p>
+        <p>Accuracy: 92%</p>
+        <button>Download PDF</button>
+      </div>
+      <div class="report-box">
+        <h2>Food Startup Report</h2>
+        <p>City: Mumbai</p>
+        <p>Predicted Growth: 10%</p>
+        <p>Accuracy: 89%</p>
+        <button>Download PDF</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- About -->
+  <section id="about">
+    <h1>About BizRadar</h1>
+    <p>BizRadar is an AI-powered platform that identifies profitable business opportunities with predictive insights, growth forecasts, and accuracy ratings.</p>
+  </section>
+
+  <!-- Contact -->
+  <section id="contact">
+    <h1>Contact Us</h1>
+    <p>Email: support@bizradar.ai | Phone: +91-9876543210</p>
+    <form>
+      <input type="text" placeholder="Your Name" required>
+      <input type="email" placeholder="Your Email" required>
+      <textarea rows="4" placeholder="Message"></textarea>
+      <button type="submit">Send</button>
+    </form>
+  </section>
+
+  <!-- JS -->
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <script>
+    // Navbar active highlighting
+    const sections = document.querySelectorAll("section");
+    const navLinks = document.querySelectorAll("nav ul li a");
+    window.addEventListener("scroll", ()=>{
+      let current = "";
+      sections.forEach(section => {
+        const sectionTop = section.offsetTop - 150;
+        if(pageYOffset >= sectionTop) current = section.getAttribute("id");
+      });
+      navLinks.forEach(link => link.classList.remove("active"));
+      if(current) document.querySelector("nav ul li a[href='#"+current+"']").classList.add("active");
+    });
+
+    // Initialize map
+    var map = L.map('map').setView([20.5937, 78.9629], 5); // India
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'&copy; OpenStreetMap contributors'}).addTo(map);
+
+    var markers = [];
+    var radarCircles = [];
+
+    const sampleData = [
+      {city:"New Delhi", lat:28.6139, lon:77.2090, sector:"Retail", idea:"Convenience Store", growth:"8%", accuracy:"92%"},
+      {city:"Mumbai", lat:19.0760, lon:72.8777, sector:"Food", idea:"Cloud Kitchen", growth:"10%", accuracy:"89%"},
+      {city:"Bangalore", lat:12.9716, lon:77.5946, sector:"Tech", idea:"AI Learning Platform", growth:"12%", accuracy:"95%"},
+      {city:"Chennai", lat:13.0827, lon:80.2707, sector:"Retail", idea:"Eco-Friendly Store", growth:"7%", accuracy:"90%"},
+      {city:"Hyderabad", lat:17.3850, lon:78.4867, sector:"Tech", idea:"IoT Devices Startup", growth:"11%", accuracy:"93%"},
+      {city:"Pune", lat:18.5204, lon:73.8567, sector:"Food", idea:"Organic Cafe", growth:"9%", accuracy:"88%"},
+    ];
+
+    function displayMarkers(filter="All"){
+      markers.forEach(m=>map.removeLayer(m));
+      radarCircles.forEach(c=>map.removeLayer(c));
+      markers=[]; radarCircles=[];
+      sampleData.forEach(data=>{
+        if(filter==="All" || data.sector===filter){
+          const marker = L.marker([data.lat, data.lon]).addTo(map)
+            .bindPopup(`<b>${data.idea}</b><br>City: ${data.city}<br>Growth: ${data.growth}<br>Accuracy: ${data.accuracy}`);
+          markers.push(marker);
+          // Radar circle animation overlay using Leaflet circle
+          const circle = L.circle([data.lat, data.lon], {radius:3000, color:'#00ff99', fill:false, weight:2}).addTo(map);
+          radarCircles.push(circle);
+        }
+      });
+      updateDashboard(filter);
+    }
+    displayMarkers();
+
+    // Update dashboard cards
+    function updateDashboard(filter="All"){
+      const dashboard = document.getElementById("dashboard");
+      dashboard.innerHTML="";
+      sampleData.forEach(data=>{
+        if(filter==="All" || data.sector===filter){
+          const card = document.createElement("div");
+          card.className="dash-card";
+          card.innerHTML=`<h3>${data.idea}</h3>
+                          <p>City: ${data.city}</p>
+                          <p>Sector: ${data.sector}</p>
+                          <p>Predicted Growth: ${data.growth}</p>
+                          <p>Accuracy: ${data.accuracy}</p>`;
+          dashboard.appendChild(card);
+        }
+      });
+    }
+
+    document.getElementById("sectorFilter").addEventListener("change",(e)=>{
+      displayMarkers(e.target.value);
+    });
+
+    function searchLocation(){
+      const location = document.getElementById("locationInput").value;
+      fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${location}`)
+        .then(res=>res.json())
+        .then(data=>{
+          if(data.length>0){
+            const lat = data[0].lat;
+            const lon = data[0].lon;
+            map.setView([lat,lon],12);
+            displayMarkers(document.getElementById("sectorFilter").value);
+          } else { alert("Location not found!"); }
+        });
+    }
+
+    // Radar animation effect
+    setInterval(()=>{
+      radarCircles.forEach(c=>{
+        c.setRadius(c.getRadius() * (Math.random()*0.3+1.05));
+      });
+    }, 500);
+  </script>
+</body>
+</html>
